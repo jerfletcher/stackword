@@ -1,4 +1,418 @@
 ---
-// StackWord — GameBoard: Main grid where the word stack is displayed
+// StackWord — GameBoard: Main interactive gameplay component
+import { getDailyPuzzle } from '../client/words.js';
+const puzzle = getDailyPuzzle();
 ---
-<div><!-- GameBoard --></div>
+
+<div class="w-full max-w-lg mx-auto px-4" client:load>
+  <!-- Word Input Display -->
+  <div class="text-center mb-6 min-h-[4rem] flex items-center justify-center">
+    <div id="sw-current-word" class="text-3xl font-bold tracking-wider text-white min-h-[2.5rem] flex items-center">
+      <span class="text-gray-600 text-lg font-normal">Tap letters to build a word</span>
+    </div>
+  </div>
+
+  <!-- Found Words Stack Area -->
+  <div id="sw-found-words" class="space-y-2 mb-6 min-h-[3rem]">
+    <!-- Found words appear here -->
+  </div>
+
+  <!-- Progress Indicator -->
+  <div class="text-center mb-4">
+    <span id="sw-progress" class="text-sm text-gray-500"></span>
+  </div>
+
+  <!-- Letter Tiles -->
+  <div id="sw-letter-tiles" class="flex flex-wrap justify-center gap-2 mb-6">
+    <!-- Letter tiles rendered by client script -->
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="flex gap-3 justify-center mb-8">
+    <button id="sw-clear-btn" class="flex-1 max-w-[140px] px-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold rounded-xl transition-all duration-200 active:scale-95 text-sm">
+      Clear
+    </button>
+    <button id="sw-check-btn" class="flex-1 max-w-[200px] px-4 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold rounded-xl transition-all duration-200 active:scale-95 shadow-lg shadow-violet-500/25 text-sm">
+      Check Word
+    </button>
+  </div>
+
+  <!-- Results Card (hidden by default) -->
+  <div id="sw-results" class="hidden text-center py-6">
+    <div class="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-6 border border-gray-700">
+      <h2 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400 mb-4">
+        🏆 Puzzle Complete!
+      </h2>
+      <div class="space-y-3 mb-6">
+        <div class="flex justify-between items-center py-2 border-b border-gray-700">
+          <span class="text-gray-400 text-sm">Score</span>
+          <span id="sw-result-score" class="text-xl font-bold text-white">0</span>
+        </div>
+        <div class="flex justify-between items-center py-2 border-b border-gray-700">
+          <span class="text-gray-400 text-sm">Words Found</span>
+          <span id="sw-result-words" class="text-white font-semibold">0/0</span>
+        </div>
+        <div class="flex justify-between items-center py-2 border-b border-gray-700">
+          <span class="text-gray-400 text-sm">Max Combo</span>
+          <span id="sw-result-combo" class="text-violet-400 font-bold">0x</span>
+        </div>
+        <div class="flex justify-between items-center py-2 border-b border-gray-700">
+          <span class="text-gray-400 text-sm">XP Earned</span>
+          <span id="sw-result-xp" class="text-emerald-400 font-bold">+0</span>
+        </div>
+        <div class="flex justify-between items-center py-2">
+          <span class="text-gray-400 text-sm">🔥 Streak</span>
+          <span id="sw-result-streak" class="text-amber-400 font-bold">0 days</span>
+        </div>
+      </div>
+      <button id="sw-share-btn" class="w-full px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 text-sm">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.5.46 1.19.76 1.96.76 1.54 0 2.79-1.25 2.79-2.79S19.54 2.37 18 2.37 15.21 3.62 15.21 5.16c0 .24.04.47.09.7L8.25 9.97C7.76 9.49 7.08 9.2 6.34 9.2 4.8 9.2 3.54 10.45 3.54 12s1.26 2.79 2.8 2.79c.74 0 1.42-.29 1.91-.77l7.11 4.15c-.05.21-.08.43-.08.66 0 1.54 1.25 2.79 2.79 2.79s2.79-1.25 2.79-2.79-1.25-2.79-2.79-2.79z"/></svg>
+        Share Results
+      </button>
+      <p id="sw-share-copy-feedback" class="text-emerald-400 text-xs mt-2 hidden">Copied to clipboard!</p>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Word entry animation */
+  @keyframes swSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(16px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  /* Wrong guess shake */
+  @keyframes swShake {
+    0%, 100% { transform: translateX(0); }
+    10%, 50%, 90% { transform: translateX(-6px); }
+    30%, 70% { transform: translateX(6px); }
+  }
+
+  /* Combo glow pulse */
+  @keyframes swGlow {
+    0%, 100% {
+      box-shadow: 0 0 8px rgba(139, 92, 246, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.6), 0 0 40px rgba(139, 92, 246, 0.2);
+    }
+  }
+
+  /* Score increment bounce */
+  @keyframes swBounce {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+
+  /* Tile press animation */
+  @keyframes swTilePress {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.9); }
+    100% { transform: scale(1); }
+  }
+
+  .sw-word-entry {
+    animation: swSlideIn 0.35s ease-out forwards;
+  }
+
+  .sw-shake {
+    animation: swShake 0.4s ease-in-out;
+  }
+
+  .sw-combo-glow {
+    animation: swGlow 1s ease-in-out infinite;
+  }
+
+  .sw-score-bounce {
+    animation: swBounce 0.2s ease-out;
+  }
+
+  .sw-tile-press {
+    animation: swTilePress 0.15s ease-out;
+  }
+</style>
+
+<script client:load>
+  // GameBoard — All interactive game logic
+  (async () => {
+    const { createGame, checkWord, isComplete } = await import('../client/game.js');
+    const { loadState, recordCompletion, saveState } = await import('../client/state.js');
+    const { generateShareText, shareOrCopy } = await import('../client/share.js');
+    const { getDailyPuzzle } = await import('../client/words.js');
+
+    // DOM elements
+    const currentWordEl = document.getElementById('sw-current-word');
+    const foundWordsEl = document.getElementById('sw-found-words');
+    const progressEl = document.getElementById('sw-progress');
+    const letterTilesEl = document.getElementById('sw-letter-tiles');
+    const clearBtn = document.getElementById('sw-clear-btn');
+    const checkBtn = document.getElementById('sw-check-btn');
+    const resultsEl = document.getElementById('sw-results');
+    const shareBtn = document.getElementById('sw-share-btn');
+    const shareFeedbackEl = document.getElementById('sw-share-copy-feedback');
+
+    // Game state
+    const puzzle = getDailyPuzzle();
+    const game = createGame(puzzle);
+    let persistentState = loadState();
+    let currentInput = '';
+    let gameFinished = false;
+
+    // --- Render letter tiles ---
+    function renderTiles() {
+      letterTilesEl.innerHTML = '';
+      puzzle.letters.forEach((letter, index) => {
+        const tile = document.createElement('button');
+        tile.className = 'sw-letter-tile w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-xl font-bold text-lg sm:text-xl flex items-center justify-center transition-all duration-200 active:scale-90 select-none';
+        tile.textContent = letter;
+        tile.dataset.letter = letter;
+        tile.dataset.index = index;
+
+        if (index === 0) {
+          // Root letter — highlighted
+          tile.classList.add(
+            'bg-gradient-to-br', 'from-violet-500', 'to-indigo-600',
+            'text-white', 'shadow-lg', 'shadow-violet-500/30',
+            'w-13 h-13 sm:w-14 sm:h-14 md:w-16 md:h-16', 'text-xl sm:text-2xl'
+          );
+        } else {
+          tile.classList.add(
+            'bg-gray-800', 'hover:bg-gray-700', 'text-gray-200',
+            'border', 'border-gray-700', 'hover:border-violet-500/50'
+          );
+        }
+
+        tile.addEventListener('click', () => handleLetterClick(letter, tile));
+        letterTilesEl.appendChild(tile);
+      });
+    }
+
+    // --- Update word input display ---
+    function updateInputDisplay() {
+      if (!currentWordEl) return;
+      if (currentInput.length === 0) {
+        currentWordEl.innerHTML = '<span class="text-gray-600 text-lg font-normal">Tap letters to build a word</span>';
+      } else {
+        currentWordEl.innerHTML = currentInput.split('').map(ch =>
+          `<span class="text-white">${ch.toUpperCase()}</span>`
+        ).join('');
+      }
+    }
+
+    // --- Update progress ---
+    function updateProgress() {
+      if (!progressEl) return;
+      const found = game.wordsFound.length;
+      const total = puzzle.words.length;
+      progressEl.textContent = `${found} / ${total} words found`;
+    }
+
+    // --- Add found word to stack ---
+    function addWordToStack(word, points, combo) {
+      if (!foundWordsEl) return;
+      const entry = document.createElement('div');
+      entry.className = 'sw-word-entry flex items-center justify-between px-3 py-2 bg-gray-800/60 rounded-lg border border-gray-700/50';
+
+      const comboLabel = combo > 1 ? ` ${combo}x` : '';
+
+      entry.innerHTML = `
+        <span class="font-semibold text-white capitalize">${word}</span>
+        <span class="text-xs">
+          <span class="text-violet-400 font-bold">+${points}</span>
+          <span class="text-violet-500/60">${comboLabel}</span>
+        </span>
+      `;
+
+      foundWordsEl.appendChild(entry);
+
+      // Scroll to bottom of found words
+      entry.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+
+    // --- Dispatch score update event for ScoreBoard ---
+    function dispatchScoreUpdate() {
+      const today = new Date().toISOString().split('T')[0];
+      const todayHigh = persistentState.highScores?.[today] ?? game.score;
+
+      window.dispatchEvent(new CustomEvent('game-score-update', {
+        detail: {
+          score: game.score,
+          combo: game.combo,
+          totalXp: persistentState.xp + game.xp,
+          level: Math.floor(Math.sqrt((persistentState.xp + game.xp) / 100)) + 1,
+          todayHighScore: Math.max(game.score, todayHigh)
+        }
+      }));
+    }
+
+    // --- Handle letter tile click ---
+    function handleLetterClick(letter, tileEl) {
+      if (gameFinished) return;
+      if (currentInput.length >= 12) return; // Max word length
+
+      currentInput += letter;
+      updateInputDisplay();
+
+      // Tile press animation
+      tileEl.classList.add('sw-tile-press');
+      setTimeout(() => tileEl.classList.remove('sw-tile-press'), 150);
+    }
+
+    // --- Shake animation for wrong guesses ---
+    function shakeInput() {
+      if (!currentWordEl) return;
+      currentWordEl.classList.add('sw-shake');
+      setTimeout(() => currentWordEl.classList.remove('sw-shake'), 400);
+    }
+
+    // --- Check Word ---
+    function handleCheckWord() {
+      if (gameFinished) return;
+      if (currentInput.length < 2) {
+        shakeInput();
+        return;
+      }
+
+      const guess = currentInput.trim().toLowerCase();
+      const result = checkWord(guess, game);
+
+      if (result.valid && result.isNew) {
+        // Correct — new word found!
+        addWordToStack(guess, result.points, result.combo);
+        updateProgress();
+        dispatchScoreUpdate();
+
+        // Combo glow effect on score
+        if (result.combo > 1) {
+          const scoreDisplay = document.getElementById('sw-score');
+          if (scoreDisplay) {
+            scoreDisplay.classList.add('sw-combo-glow');
+            setTimeout(() => scoreDisplay.classList.remove('sw-combo-glow'), 1500);
+          }
+        }
+
+        // Check for puzzle completion
+        if (isComplete(game)) {
+          handlePuzzleComplete();
+          return;
+        }
+      } else if (result.valid && !result.isNew) {
+        // Already found — brief visual feedback
+        currentWordEl.innerHTML = '<span class="text-amber-400 text-lg">Already found!</span>';
+      } else {
+        // Invalid word
+        shakeInput();
+        currentWordEl.innerHTML = '<span class="text-red-400 text-lg">Not a valid word</span>';
+        setTimeout(() => {
+          if (currentInput.length > 0) {
+            updateInputDisplay();
+          }
+        }, 800);
+      }
+
+      // Clear input after a short delay
+      setTimeout(() => {
+        currentInput = '';
+        updateInputDisplay();
+      }, result.valid ? 300 : 1200);
+    }
+
+    // --- Clear input ---
+    function handleClear() {
+      if (gameFinished) return;
+      currentInput = '';
+      updateInputDisplay();
+    }
+
+    // --- Puzzle complete ---
+    function handlePuzzleComplete() {
+      gameFinished = true;
+
+      // Record completion
+      const today = new Date().toISOString().split('T')[0];
+      persistentState = recordCompletion(today, game.score, game.xp, persistentState);
+
+      // Update results card
+      const totalWords = puzzle.words.length;
+      document.getElementById('sw-result-score').textContent = game.score.toLocaleString();
+      document.getElementById('sw-result-words').textContent = `${totalWords}/${totalWords}`;
+      document.getElementById('sw-result-combo').textContent = `${game.maxCombo}x`;
+      document.getElementById('sw-result-xp').textContent = `+${game.xp}`;
+      document.getElementById('sw-result-streak').textContent = `${persistentState.streak} days`;
+
+      // Show results
+      resultsEl.classList.remove('hidden');
+
+      // Final score dispatch
+      dispatchScoreUpdate();
+
+      // Hide game controls
+      clearBtn.classList.add('hidden');
+      checkBtn.classList.add('hidden');
+    }
+
+    // --- Share ---
+    async function handleShare() {
+      if (!shareBtn || !shareFeedbackEl) return;
+
+      const shareText = generateShareText(game, persistentState);
+      await shareOrCopy(shareText);
+
+      // Show feedback
+      shareBtn.textContent = '✓ Copied!';
+      shareBtn.classList.add('bg-emerald-600');
+      shareFeedbackEl.classList.remove('hidden');
+
+      setTimeout(() => {
+        shareBtn.innerHTML = `
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.5.46 1.19.76 1.96.76 1.54 0 2.79-1.25 2.79-2.79S19.54 2.37 18 2.37 15.21 3.62 15.21 5.16c0 .24.04.47.09.7L8.25 9.97C7.76 9.49 7.08 9.2 6.34 9.2 4.8 9.2 3.54 10.45 3.54 12s1.26 2.79 2.8 2.79c.74 0 1.42-.29 1.91-.77l7.11 4.15c-.05.21-.08.43-.08.66 0 1.54 1.25 2.79 2.79 2.79s2.79-1.25 2.79-2.79-1.25-2.79-2.79-2.79z"/></svg>
+          Share Results
+        `;
+        shareBtn.classList.remove('bg-emerald-600');
+        shareFeedbackEl.classList.add('hidden');
+      }, 2000);
+    }
+
+    // --- Keyboard support ---
+    document.addEventListener('keydown', (e) => {
+      if (gameFinished) return;
+
+      if (e.key === 'Enter') {
+        handleCheckWord();
+      } else if (e.key === 'Backspace') {
+        if (currentInput.length > 0) {
+          currentInput = currentInput.slice(0, -1);
+          updateInputDisplay();
+        }
+      } else if (e.key === 'Escape') {
+        handleClear();
+      } else {
+        // Check if pressed key matches any letter tile
+        const letter = e.key.toUpperCase();
+        if (letter.length === 1 && puzzle.letters.includes(letter)) {
+          const tile = letterTilesEl.querySelector(`[data-letter="${letter}"]`);
+          if (tile) {
+            handleLetterClick(letter, tile);
+          }
+        }
+      }
+    });
+
+    // --- Event listeners ---
+    if (checkBtn) checkBtn.addEventListener('click', handleCheckWord);
+    if (clearBtn) clearBtn.addEventListener('click', handleClear);
+    if (shareBtn) shareBtn.addEventListener('click', handleShare);
+
+    // --- Initialize ---
+    renderTiles();
+    updateProgress();
+    dispatchScoreUpdate();
+  })();
+</script>
