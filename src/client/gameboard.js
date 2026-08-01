@@ -1,19 +1,19 @@
 // GameBoard — All interactive game logic
 (async () => {
   try {
-    console.log('[GameBoard] IIFE started');
+    // console.log('[GameBoard] IIFE started');
 
     const { createGame, checkWord, isComplete } = await import('/client/game.js');
-    console.log('[GameBoard] game.js imported');
+    // console.log('[GameBoard] game.js imported');
 
     const { loadState, recordCompletion, saveState } = await import('/client/state.js');
-    console.log('[GameBoard] state.js imported');
+    // console.log('[GameBoard] state.js imported');
 
     const { generateShareText, shareOrCopy } = await import('/client/share.js');
-    console.log('[GameBoard] share.js imported');
+    // console.log('[GameBoard] share.js imported');
 
     const { getDailyPuzzle } = await import('/client/words.js');
-    console.log('[GameBoard] words.js imported');
+    // console.log('[GameBoard] words.js imported');
 
     // DOM elements
     const currentWordEl = document.getElementById('sw-current-word');
@@ -25,17 +25,14 @@
     const resultsEl = document.getElementById('sw-results');
     const shareBtn = document.getElementById('sw-share-btn');
     const shareFeedbackEl = document.getElementById('sw-share-copy-feedback');
-    console.log('[GameBoard] DOM elements:', { letterTilesEl: !!letterTilesEl, currentWordEl: !!currentWordEl });
+    // console.log('[GameBoard] DOM elements:', ...);
 
     // Game state
     const puzzle = getDailyPuzzle();
-    console.log('[GameBoard] puzzle:', puzzle.letters.join(''));
 
     const game = createGame(puzzle);
-    console.log('[GameBoard] game created');
 
     let persistentState = loadState();
-    console.log('[GameBoard] state loaded');
 
     let currentInput = '';
     let gameFinished = false;
@@ -287,12 +284,9 @@
   if (shareBtn) shareBtn.addEventListener('click', handleShare);
 
   // --- Initialize ---
-  console.log('[GameBoard] calling renderTiles');
   renderTiles();
-  console.log('[GameBoard] tiles rendered, count:', letterTilesEl.children.length);
   updateProgress();
   dispatchScoreUpdate();
-  console.log('[GameBoard] IIFE completed successfully');
   } catch(err) {
     console.error('[GameBoard] IIFE FAILED:', err);
     console.error('[GameBoard] Stack:', err.stack);
