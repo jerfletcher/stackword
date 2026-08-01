@@ -1,9 +1,9 @@
 // GameBoard — All interactive game logic
 (async () => {
-  const { createGame, checkWord, isComplete } = await import('./game.js');
-  const { loadState, recordCompletion, saveState } = await import('./state.js');
-  const { generateShareText, shareOrCopy } = await import('./share.js');
-  const { getDailyPuzzle } = await import('./words.js');
+  const { createGame, checkWord, isComplete } = await import('/client/game.js');
+  const { loadState, recordCompletion, saveState } = await import('/client/state.js');
+  const { generateShareText, shareOrCopy } = await import('/client/share.js');
+  const { getDailyPuzzle } = await import('/client/words.js');
 
   // DOM elements
   const currentWordEl = document.getElementById('sw-current-word');
