@@ -28,11 +28,7 @@ jobs:
         run: npm run build
 
       - name: Deploy to Cloudflare Pages
-        id: deploy
-        uses: cloudflare/pages-action@1
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: a3a6c642a68ebcfa9460bacfc272862a
-          projectName: stackword
-          directory: dist
-          branch: main
+          command: pages deploy dist --project-name=stackword
